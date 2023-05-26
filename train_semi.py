@@ -14,7 +14,7 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 import torch.nn.functional as F
 import yaml
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 from u2pl.dataset.augmentation import generate_unsup_data
 from u2pl.dataset.builder import get_loader
@@ -39,7 +39,7 @@ from u2pl.utils.utils import (
 
 parser = argparse.ArgumentParser(description="Semi-Supervised Semantic Segmentation")
 parser.add_argument("--config", type=str, default="config.yaml")
-parser.add_argument("--local_rank", type=int, default=0)
+parser.add_argument("--local-rank", type=int, default=0)
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--port", default=None, type=int)
 
@@ -278,11 +278,11 @@ def train(
         learning_rates.update(lr[0])
         lr_scheduler.step()
 
-        image_l, label_l = loader_l_iter.next()
+        image_l, label_l = next(loader_l_iter)
         batch_size, h, w = label_l.size()
         image_l, label_l = image_l.cuda(), label_l.cuda()
 
-        image_u, _ = loader_u_iter.next()
+        image_u, _ = next(loader_u_iter)
         image_u = image_u.cuda()
 
         if epoch < cfg["trainer"].get("sup_only_epoch", 1):
