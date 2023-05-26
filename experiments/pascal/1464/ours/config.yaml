@@ -16,7 +16,7 @@ dataset: # Required.
     crop:
       type: center
       size: [513, 513] # crop image with HxW size
-  batch_size: 4
+  batch_size: 2
   n_sup: 1464
   noise_std: 0.1
   workers: 2
@@ -54,6 +54,7 @@ trainer: # Required.
     temperature: 0.5
 
 saver:
+  auto_resume: True
   snapshot_dir: checkpoints
   pretrain: ''
 
