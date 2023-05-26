@@ -119,12 +119,12 @@ def main():
 
     cfg["net"]["sync_bn"] = False
     model = ModelBuilder(cfg["net"])
-    checkpoint = torch.load(args.model_path)
-    key = "teacher_state" if "teacher_state" in checkpoint.keys() else "model_state"
-    logger.info(f"=> load checkpoint[{key}]")
+    # checkpoint = torch.load(args.model_path)
+    # key = "teacher_state" if "teacher_state" in checkpoint.keys() else "model_state"
+    # logger.info(f"=> load checkpoint[{key}]")
 
-    saved_state_dict = convert_state_dict(checkpoint[key])
-    model.load_state_dict(saved_state_dict, strict=False)
+    # saved_state_dict = convert_state_dict(checkpoint[key])
+    # model.load_state_dict(saved_state_dict, strict=False)
     model.cuda()
     logger.info("Load Model Done!")
     if "cityscapes" in cfg["dataset"]["type"]:
@@ -316,15 +316,19 @@ def valiadte_whole(
     logger.info(">>>>>>>>>>>>>>>> Start Evaluation >>>>>>>>>>>>>>>>")
     data_time = AverageMeter()
     batch_time = AverageMeter()
+    intersection_meter = AverageMeter()
+    union_meter = AverageMeter()
     model.eval()
     end = time.time()
-    for i, (input_pth, _) in enumerate(data_list):
+    for i, (input_pth, label_path) in enumerate(data_list):
         data_time.update(time.time() - end)
         image = Image.open(input_pth).convert("RGB")
         image = np.asarray(image).astype(np.float32)
         image = (image - mean) / std
         image = torch.Tensor(image).permute(2, 0, 1)
         image = image.contiguous().unsqueeze(dim=0)
+        label = Image.open(label_path).convert("L")
+        label = np.asarray(label).astype(np.uint8)
         h, w = image.size()[-2:]
         prediction = torch.zeros((classes, h, w), dtype=torch.float).cuda()
         for scale in scales:
@@ -347,17 +351,26 @@ def valiadte_whole(
                     i + 1, len(data_list), data_time=data_time, batch_time=batch_time
                 )
             )
-        check_makedirs(gray_folder)
-        check_makedirs(color_folder)
-        gray = np.uint8(prediction)
-        color = colorize(gray,colormap)
-        image_path, _ = data_list[i]
-        image_name = image_path.split("/")[-1].split(".")[0]
-        gray_path = os.path.join(gray_folder, image_name + ".png")
-        color_path = os.path.join(color_folder, image_name + ".png")
-        gray = Image.fromarray(gray)
-        gray.save(gray_path)
-        color.save(color_path)
+        intersection, union, target = intersectionAndUnion(prediction, label, classes)
+        intersection_meter.update(intersection)
+        union_meter.update(union)
+
+        # check_makedirs(gray_folder)
+        # check_makedirs(color_folder)
+        # gray = np.uint8(prediction)
+        # color = colorize(gray,colormap)
+        # image_path, _ = data_list[i]
+        # image_name = image_path.split("/")[-1].split(".")[0]
+        # gray_path = os.path.join(gray_folder, image_name + ".png")
+        # color_path = os.path.join(color_folder, image_name + ".png")
+        # gray = Image.fromarray(gray)
+        # gray.save(gray_path)
+        # color.save(color_path)
+
+    iou_class = intersection_meter.sum / (union_meter.sum + 1e-10)
+    for i, iou in enumerate(iou_class):
+        logger.info(" * class [{}] IoU {:.2f}".format(i, iou * 100))
+    logger.info(" * mIoU {:.2f}".format(np.mean(iou_class) * 100))
     logger.info("<<<<<<<<<<<<<<<<< End  Evaluation <<<<<<<<<<<<<<<<<")
 
 

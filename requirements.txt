@@ -1,6 +1,6 @@
 pyyaml>=5.4.0
 easydict
-tensorboardX
+tensorboard
 opencv-python
 scipy
 sklearn
