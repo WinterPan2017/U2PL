@@ -16,7 +16,7 @@ dataset: # Required.
     crop:
       type: center
       size: [513, 513] # crop image with HxW size
-  batch_size: 4
+  batch_size: 2
   n_sup: 1464
   noise_std: 0.1
   workers: 2
@@ -57,7 +57,7 @@ trainer: # Required.
     patch_size: 32
     conf_threshold: 0.9
     weight: 1
-  sup_only_epoch: 0
+  sup_only_epoch: 1
 
 
 saver:

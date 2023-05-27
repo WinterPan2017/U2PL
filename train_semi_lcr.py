@@ -40,7 +40,7 @@ from u2pl.utils.mask import RandomMaskGenerator
 
 parser = argparse.ArgumentParser(description="Semi-Supervised Semantic Segmentation")
 parser.add_argument("--config", type=str, default="config.yaml")
-parser.add_argument("--local_rank", type=int, default=0)
+parser.add_argument("--local-rank", type=int, default=0)
 parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--port", default=None, type=int)
 
@@ -334,6 +334,7 @@ def train(
             # masked image generation
             num_unlabeled, c, h, w = image_u.shape
             image_masked = mask_gen(image_u)
+            logits_u_mask, label_u_mask = logits_u_aug.detach().clone(), label_u_aug.detach().clone()
 
             # apply strong data augmentation: cutout, cutmix, or classmix
             if np.random.uniform(0, 1) < 0.5 and cfg["trainer"]["unsupervised"].get(
@@ -391,11 +392,10 @@ def train(
             # lcr loss
             conf_threshold = cfg["trainer"]["lcr"]["conf_threshold"]
             with torch.no_grad():
-                lcr_label = label_u_aug.detach().clone()
-                reliable_mask_lcr = logits_u_aug.ge(conf_threshold).bool() * (label_u_aug != 255).bool()
+                reliable_mask_lcr = logits_u_mask.ge(conf_threshold).bool() * (label_u_mask != 255).bool()
                 reliable_ratio_lcr = torch.sum(reliable_mask_lcr.bool()) / (num_unlabeled * h * w)
-                lcr_label[~reliable_mask_lcr] = 255 
-            lcr_loss = F.cross_entropy(pred_m_large, lcr_label, ignore_index=255) * cfg["trainer"]["lcr"]["weight"]
+                label_u_mask[~reliable_mask_lcr] = 255 
+            lcr_loss = F.cross_entropy(pred_m_large, label_u_mask, ignore_index=255) * cfg["trainer"]["lcr"]["weight"]
 
             # unsupervised loss
             drop_percent = cfg["trainer"]["unsupervised"].get("drop_percent", 100)
@@ -590,7 +590,7 @@ def train(
 
         reduced_reliable_ratio_lcr = reliable_ratio_lcr.clone().detach()
         dist.all_reduce(reduced_reliable_ratio_lcr)
-        reliable_ratio_lcr_meter.update(reduced_reliable_ratio_lcr.item())
+        reliable_ratio_lcr_meter.update(reduced_reliable_ratio_lcr.item()/world_size)
 
         batch_end = time.time()
         batch_times.update(batch_end - batch_start)

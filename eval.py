@@ -119,12 +119,12 @@ def main():
 
     cfg["net"]["sync_bn"] = False
     model = ModelBuilder(cfg["net"])
-    # checkpoint = torch.load(args.model_path)
-    # key = "teacher_state" if "teacher_state" in checkpoint.keys() else "model_state"
-    # logger.info(f"=> load checkpoint[{key}]")
+    checkpoint = torch.load(args.model_path)
+    key = "teacher_state" if "teacher_state" in checkpoint.keys() else "model_state"
+    logger.info(f"=> load checkpoint[{key}]")
 
-    # saved_state_dict = convert_state_dict(checkpoint[key])
-    # model.load_state_dict(saved_state_dict, strict=False)
+    saved_state_dict = convert_state_dict(checkpoint[key])
+    model.load_state_dict(saved_state_dict, strict=False)
     model.cuda()
     logger.info("Load Model Done!")
     if "cityscapes" in cfg["dataset"]["type"]:

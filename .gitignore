@@ -5,7 +5,7 @@
 # for here
 dev/
 data/cityscapes/
-data/VOC2012/
+data/VOC2012
 events/
 log/
 checkpoints/
